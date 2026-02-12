@@ -1,4 +1,8 @@
 
+// File is copyrighted 2026, by Kjetil Hvalstrand
+// under LGPL license.
+
+
 #include <proto/dos.h>
 #include <proto/exec.h>
 
