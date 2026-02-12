@@ -1,5 +1,9 @@
-// File is copyrighted 2026, by Kjetil Hvalstrand
-// under LGPL license.
+/*
+ * Copyright (c) 2026 Kjetil Hvalstrand. All rights reserved.
+ *
+ * Denne koden er lisensiert under BSD 3-Clause License.
+ * Se https://opensource.org for detaljer.
+ */
 
 #include <stdlib.h>
 
