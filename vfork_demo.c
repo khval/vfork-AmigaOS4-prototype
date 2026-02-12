@@ -31,7 +31,7 @@ int main()
 	if (pid == 0) // this is the child
 	{
 		printf("this is the child thread, saying hello..\n");
-		vforkExit(0); // terminate vfork thread, and brevent system crash
+		vforkExit(0); // terminate vfork thread, and prevent system crash
 	}
 	else
 	{
