@@ -3,6 +3,7 @@
 #include <proto/exec.h>
 
 extern ULONG vfork();
+extern ULONG vforkExit();
 
 
 struct DebugIFace * IDebug = NULL;
@@ -20,7 +21,7 @@ int main()
 	{
 		DebugPrintF("work...\n");
 		Printf("worked\n");
-		_exit(0);
+		vforkExit(0); // terminate vfork thread, and brevent system crash
 	}
 	else
 	{
@@ -28,7 +29,7 @@ int main()
 	}
 	
 	Printf("wait a bit....\n");
-	Delay(50);
+	vforkExit(0); // wait for all vfork threads, and clean up nice.
 
 	DropInterface( (struct Interface *) IDebug);
 
