@@ -2,6 +2,9 @@
 #include <proto/dos.h>
 #include <proto/exec.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+
 extern ULONG vfork();
 extern ULONG vforkExit();
 
