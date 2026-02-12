@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 extern ULONG vfork();
-extern ULONG vforkExit();
+extern void vforkExit(int retcode);
 
 
 struct DebugIFace * IDebug = NULL;
@@ -21,7 +21,7 @@ int main()
 
        IDebug = (struct DebugIFace *) GetInterface( SysBase, "debug", 1L, NULL);
 
-	// vfork returns child threads (struct Task *) on success.
+	// vfork returns child threads (struct Task *) casted as int on success.
 	// (pid is not used so often on AmigaOS, (struct Task *) is more useful.)
 	//
 	// returns 0 on failure..
