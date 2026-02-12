@@ -17,35 +17,16 @@ void vfork_end();
 
 ULONG vfork_count = 0;
 
-struct sdat
-{
-	APTR sp;
-	APTR ret;
-};
-
-struct stack_frame
-{
-	APTR sp;
-	APTR ld;
-	ULONG size;
-};
-
 struct stack_info
 {
 	struct Process *proc;
-	ULONG sp;
-	ULONG ld;
-	ULONG start;		// start without header
-	ULONG end;		// end before current frame.
 	int cnt;
 };
-
 
 struct vforkcontext
 {
 	struct stack_info parent;
 	struct stack_info child;
-	int cnt;
 	int success;
 };
 
@@ -58,7 +39,9 @@ int32 childStart(const char *arg ,int32 len ,struct ExecBase *base )
 
 	Wait( SIGF_CHILD );
 
+#if debug
 	DebugPrintF("childStart() lives, and hopefully won't die\n");
+#endif
 }
 
 void childStart_end()
@@ -71,11 +54,14 @@ VOID ChildFinalCode (int32 result1, int32 final_data, struct ExecBase *sysbase)
 	vfork_count--;
 	Permit();
 
+#if debug
 	Forbid();
 	DebugPrintF("ChildFinalCode\n");
 	Permit();
+#endif
 }
 
+#if debug
 int32 printStack(struct Hook *hook, struct Task *task, struct StackFrameMsg *frame)
 {
 	struct DebugSymbol *symbol = NULL;
@@ -148,6 +134,8 @@ void dump_stack(struct stack_info *task_info)
 		FreeSysObject(ASOT_HOOK, hook);
 	}
 }
+#endif
+
 
 static uint32 *find_frame(struct Task *t, APTR func_start, APTR func_end )
 {
@@ -170,7 +158,6 @@ static uint32 *find_frame(struct Task *t, APTR func_start, APTR func_end )
 
     return NULL;
 }
-
 
 uint32 get_stack_size( uint32 *src )
 {
