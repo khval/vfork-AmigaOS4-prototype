@@ -23,13 +23,12 @@ int main()
 
 	if (pid == 0) // this is the child
 	{
-		DebugPrintF("work...\n");
-		Printf("worked\n");
+		printf("this is the child thread, saying hello..\n");
 		vforkExit(0); // terminate vfork thread, and brevent system crash
 	}
 	else
 	{
-		DebugPrintF("this is the parent\n");
+		printf("this is the parent, parent got child pid: %d from vfork\n",pid);
 	}
 	
 	Printf("wait a bit....\n");
