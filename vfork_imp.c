@@ -1,3 +1,5 @@
+// File is copyrighted 2026, by Kjetil Hvalstrand
+// under LGPL license.
 
 #include <stdlib.h>
 
