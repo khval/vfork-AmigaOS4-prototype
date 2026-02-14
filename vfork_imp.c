@@ -28,8 +28,8 @@ struct vforkcontext
 	struct stack_info parent;
 	struct stack_info child;
 	int success;
+	ULONG childPID;
 };
-
 
 int32 childStart(const char *arg ,int32 len ,struct ExecBase *base )
 {
@@ -177,19 +177,32 @@ int32 childStackBuilderStart(const char *arg ,int32 len ,struct ExecBase *base )
 	dump_stack(  &userdata -> parent );
 #endif
 
+	// copy signals.
+
 	userdata -> child.proc -> pr_Task.tc_SigAlloc = userdata -> parent.proc -> pr_Task.tc_SigAlloc;
 	userdata -> child.proc -> pr_Task.tc_SigWait = userdata -> parent.proc -> pr_Task.tc_SigWait;
+
+	// copy user id / group id (user id is needed by clib4)
+
+	userdata -> child.proc -> pr_UID = userdata -> parent.proc -> pr_UID;
+	userdata -> child.proc -> pr_GID = userdata -> parent.proc -> pr_GID;
+
+	// move return address
+
 	userdata -> success = patch_child_return( userdata -> parent.proc, userdata -> child.proc);
+
+	userdata -> childPID = userdata -> child.proc -> pr_ProcessID;
+
+	// after patch, we can copy entry data...
+
+	userdata -> child.proc -> pr_EntryData = userdata -> parent.proc -> pr_EntryData;
+	userdata -> child.proc -> pr_EntryCode = userdata -> parent.proc -> pr_EntryCode;
+	userdata -> child.proc -> pr_Task.tc_UserData = userdata -> parent.proc -> pr_Task.tc_UserData;
+	userdata -> child.proc -> pr_FinalData = userdata -> parent.proc -> pr_FinalData;
 
 #if debug
 	dump_stack( &userdata -> child );
 #endif
-
-	parent_sp = userdata -> parent.proc -> pr_Task.tc_SPReg;
-	child_sp = userdata -> child.proc -> pr_Task.tc_SPReg;
-
-	child_sp[0] = parent_sp[0];	// dirty copy last stack frame from parent....
-	child_sp[1] = parent_sp[1];	// copy LR
 
 	RestartTask( (struct Task *) userdata -> child.proc, 0 );
 	RestartTask( (struct Task *) userdata -> parent.proc, 0 );
@@ -220,12 +233,14 @@ ULONG deep_vfork()
 			{ NP_StackSize, 0 },
 			{ NP_Name, (ULONG) "vfork() child" },
 			{ NP_Start,  (ULONG) childStart },
-//			{ NP_Output, out },
+			{ NP_Output, Output() },
+			{ NP_CloseOutput, FALSE },
+			{ NP_Input, Input() },
+			{ NP_CloseInput, FALSE },
 			{ NP_FinalCode , (ULONG) ChildFinalCode },
 			{ NP_Child, TRUE },
 			{ TAG_END , 0 }
 		};
-
 
 	userdata.parent.proc = (struct Process *) FindTask(NULL);
 
@@ -233,19 +248,22 @@ ULONG deep_vfork()
 
 	userdata.child.proc = CreateNewProcTagList(tags_child_process);
 
-	CreateNewProcTagList(tags_stackbuilder_process);
-
-	Wait( SIGF_CHILD );
-
-	me = (struct Process *) FindTask(NULL);
-
-	Forbid();
-	DebugPrintF("vfork running from task %08lx\n",me);
-	Permit();
-
-	if (me == userdata.parent.proc) 
+	if (userdata.child.proc)	// can't copy if child did not start.
 	{
-		return ( userdata.success ) ? (ULONG) userdata.child.proc : (ULONG) 0  ;
+		CreateNewProcTagList(tags_stackbuilder_process);
+
+		Wait( SIGF_CHILD );
+
+		me = (struct Process *) FindTask(NULL);
+
+		Forbid();
+		DebugPrintF("vfork running from task %08lx\n",me);
+		Permit();
+
+		if (me == userdata.parent.proc) 
+		{
+			return ( userdata.success ) ? (ULONG) userdata.childPID : (ULONG) 0  ;
+		}
 	}
 
 	return 0;
@@ -259,7 +277,6 @@ ULONG vfork()
 void vfork_end()
 {
 }
-
 
 void vforkExit(int code)
 {
