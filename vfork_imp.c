@@ -42,6 +42,8 @@ int32 childStart(const char *arg ,int32 len ,struct ExecBase *base )
 #if debug
 	DebugPrintF("childStart() lives, and hopefully won't die\n");
 #endif
+
+	return 0;
 }
 
 void childStart_end()
