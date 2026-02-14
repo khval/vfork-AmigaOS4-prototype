@@ -6,13 +6,14 @@
  */
 
 #include <stdlib.h>
+#include <errno.h>
 
 #include <proto/dos.h>
 #include <proto/exec.h>
 
 extern struct DebugIFace * IDebug;
 
-ULONG vfork();
+int vfork();
 void vfork_end();
 
 ULONG vfork_count = 0;
@@ -212,12 +213,10 @@ int32 childStackBuilderStart(const char *arg ,int32 len ,struct ExecBase *base )
 
 }
 
-ULONG deep_vfork()
+int deep_vfork()
 {
 	struct vforkcontext userdata;
 	struct Process *me;
-
-//	BPTR out = Open("CON:",MODE_NEWFILE);
 
 	userdata.success = FALSE;
 
@@ -260,16 +259,25 @@ ULONG deep_vfork()
 		DebugPrintF("vfork running from task %08lx\n",me);
 		Permit();
 
-		if (me == userdata.parent.proc) 
+
+		if ( userdata.success )
 		{
-			return ( userdata.success ) ? (ULONG) userdata.childPID : (ULONG) 0  ;
+			if (me == userdata.parent.proc) 
+			{
+				return (int) userdata.childPID ;		// is parent, return child pid.
+			}
+			else
+			{
+				return 0;		// is child
+			}
 		}
 	}
 
-	return 0;
+	errno = EAGAIN;
+	return -1; // failed
 }
 
-ULONG vfork()
+int vfork()
 {
 	return deep_vfork();
 }

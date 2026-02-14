@@ -11,9 +11,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern ULONG vfork();
+extern int vfork();
 extern void vforkExit(int retcode);
 
+/********************************************
+	vfork() 
+	returns pid of child on success.
+	return 0 if its the child.
+	return -1 if it failes to create a thread.
+*********************************************/
 
 struct DebugIFace * IDebug = NULL;
 
