@@ -1,53 +1,58 @@
 # vfork-AmigaOS4-prototype
 
-# ⚠️ WARNING – EXTREMELY NON-STANDARD vfork() IMPLEMENTATION (AmigaOS 4)
+# ⚠️ WARNING – NON-STANDARD vfork() IMPLEMENTATION (AmigaOS 4)
 
-This implementation performs manual stack reconstruction and continuation transfer on AmigaOS 4.
+It is not a true POSIX vfork() implementation.
+AmigaOS 4 does not provide:
 
-It is NOT fully compatible with POSIX vfork() semantics as implemented on UNIX/Linux systems.
-AmigaOS 4 does not use paged stacks or separate process address spaces, and this implementation reconstructs stack frames manually.
+* Paged stacks
+  (Copy-on-write memory, only works on paged stack.)
+* Native fork()/vfork() semantics
+* Independent duplicated task address spaces
 
-This is a compatibility mechanism — not a true fork.
+### Instead, this implementation:
 
-## ⚠️ Should You Use This?
+* Creates a new Process
+* Manually reconstructs the parent stack
+* Transfers continuation execution into the child
+* Synchronizes parent/child manually
+* Uses RemTask() for child termination
 
-You probably should NOT use this.
+It exists for legacy UNIX code compatibility, not as a general multiprocessing primitive.
 
-* Modern development practice (even on Linux) discourages fork() and vfork() in favor of:
+## When Should You Use This?
 
-* spawn()-style APIs
+* Porting legacy UNIX applications
+* Code that immediately calls exec() after vfork()
+* Situations where rewriting to pthreads would be extremely complex
 
-* proper process creation
+## When Should You NOT Use This?
 
-* threads (pthread)
+* New software
+* High reliability systems
+* Security-sensitive environments
+* Complex multi-threaded designs
 
-* task-based designs
+This is a compatibility bridge — not a general multiprocessing solution.
 
-## On AmigaOS 4 specifically, this implementation:
+## Performance Warning
 
-* Copies stack frames
+This vfork():
 
-* Modifies return addresses
+* Copies stack memory
+* Performs manual continuation patching
+* Synchronizes tasks manually
 
-* Rebuilds execution flow manually
+It may be slower than:
 
-In many cases, this can be slower than spawning a process or using threads.
+pthread
+spawn
+Native task creation
+Modern UNIX systems often discourage fork()/vfork() usage except for exec() scenarios.
 
-## ✅ When Might It Be Useful?
+Use this only when porting legacy UNIX software where rewriting the process model is impractical.
 
-This exists for:
-
-* Compiling legacy UNIX software
-
-* Porting codebases that assume vfork()
-
-* Situations where rewriting thread/process logic would take days or weeks
-
-* If you are trying to port legacy software and cannot easily determine where a thread logically ends, this may allow the code to run with minimal modification.
-
-### This is a compatibility bridge, not a recommended architecture.
-
-#### 🚫 What the Child MUST NOT Do
+### 🚫 What the Child MUST NOT Do
 
 *	❌ Do NOT call exit()
 		You MUST call:
@@ -139,40 +144,15 @@ vforkExit() will:
 
 * Prevent premature termination while children still run
 
-## ⚠️ Known Limitations
+## Final Notes
 
-This implementation:
+This implementation relies on:
 
-* Reconstructs stack frames manually
+* Manual stack reconstruction
+* Continuation frame patching
+* Shared address space assumptions
+* Unexpected side effects may occur.
 
-* Patches return addresses
+If something behaves strangely after vfork(),
+assume stack layout is the cause first.
 
-* Does not duplicate full process state
-
-* Does not clone libc internal state
-
-* Does not emulate UNIX memory semantics
-
-* There may be unintended side effects.
-
-Not everything will behave exactly as expected after vfork().
-
-## 🚨 Final Warning
-
-This is advanced, low-level stack manipulation.
-
-If used incorrectly, it may result in:
-
-* Silent corruption
-* Random crashes
-  * DSI exceptions
-  * System instability
-
-Use only if you understand:
-
-* AmigaOS task model
-* Exec process lifecycle
-* Signal behavior
-* Resource ownership rules
-
-This is a compatibility tool for experts — not a general-purpose API.
