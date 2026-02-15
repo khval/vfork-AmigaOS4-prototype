@@ -11,6 +11,8 @@
 #include <proto/dos.h>
 #include <proto/exec.h>
 
+#include "vfork_imp.h"
+
 extern struct DebugIFace * IDebug;
 
 #if debug

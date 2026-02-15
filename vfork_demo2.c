@@ -23,41 +23,62 @@ extern void vforkExit(int retcode);
 
 struct DebugIFace * IDebug = NULL;
 
+	int pid[10];
+
+#undef debug
+#define debug 1
+
+
+
 int main()
 {
-	int pid;
+	int n;
+	int _pid;
 
-       IDebug = (struct DebugIFace *) GetInterface( SysBase, "debug", 1L, NULL);
+#if debug
+	IDebug = (struct DebugIFace *) GetInterface( SysBase, "debug", 1L, NULL);
+#endif
 
 	// vfork returns child threads (struct Task *) casted as int on success.
 	// (pid is not used so often on AmigaOS, (struct Task *) is more useful.)
 	//
 	// returns 0 on failure..
 	
-	pid = vfork();
-
-	switch (pid) // this is the child
+	for (n=0;n<10;n++)
 	{
-		case 0:
+		printf("-- top of for loop --\n");
 
-			printf("this is the child thread, saying hello..\n");
-			Delay(2);
-			Printf("dos printf works in child\n");
-			vforkExit(0); // terminate vfork thread, and prevent system crash
+		_pid = vfork();
 
-		case -1:
-			printf("vfork failed, no thread created\n");
-			break;
+		printf("task %p, n is %d, address of %p\n",FindTask(NULL),n, &n);
 
-		default:
-			printf("this is the parent, parent got child pid: %d from vfork\n",pid);
-			break;
+//		pid[n]=_pid;
+
+		switch (_pid) // this is the child
+		{
+			case 0:
+
+				printf("this is the child thread, saying hello..\n");
+				Delay(2);
+				Printf("dos printf works in child\n");
+				vforkExit(0); // terminate vfork thread, and prevent system crash
+
+			case -1:
+				printf("vfork failed, no thread created\n");
+				break;
+
+			default:
+				printf("this is the parent, parent got child pid: %d from vfork\n",_pid);
+				break;
+		}
 	}
 	
 	Printf("wait a bit....\n");
 	vforkExit(0); // wait for all vfork threads, and clean up nice.
 
+#ifdef debug
 	DropInterface( (struct Interface *) IDebug);
+#endif
 
 }
 

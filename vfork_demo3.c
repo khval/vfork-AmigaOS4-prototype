@@ -23,17 +23,10 @@ extern void vforkExit(int retcode);
 
 struct DebugIFace * IDebug = NULL;
 
-int main()
+int b()
 {
 	int pid;
 
-       IDebug = (struct DebugIFace *) GetInterface( SysBase, "debug", 1L, NULL);
-
-	// vfork returns child threads (struct Task *) casted as int on success.
-	// (pid is not used so often on AmigaOS, (struct Task *) is more useful.)
-	//
-	// returns 0 on failure..
-	
 	pid = vfork();
 
 	switch (pid) // this is the child
@@ -53,6 +46,27 @@ int main()
 			printf("this is the parent, parent got child pid: %d from vfork\n",pid);
 			break;
 	}
+}
+
+
+int a()
+{
+	b();
+}
+
+
+int main()
+{
+	int pid;
+
+       IDebug = (struct DebugIFace *) GetInterface( SysBase, "debug", 1L, NULL);
+
+	// vfork returns child threads (struct Task *) casted as int on success.
+	// (pid is not used so often on AmigaOS, (struct Task *) is more useful.)
+	//
+	// returns 0 on failure..
+	
+	a();
 	
 	Printf("wait a bit....\n");
 	vforkExit(0); // wait for all vfork threads, and clean up nice.

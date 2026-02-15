@@ -64,7 +64,7 @@ VOID ChildFinalCode (int32 result1, int32 final_data, struct ExecBase *sysbase)
 #endif
 }
 
-static uint32 *find_frame(struct Task *t, APTR func_start, APTR func_end )
+static uint32 *find_return_frame(struct Task *t, APTR func_start, APTR func_end )
 {
 	int guard = 0;
 	int vfork_size =  (ULONG) vfork_end - (ULONG) vfork;
@@ -77,7 +77,7 @@ static uint32 *find_frame(struct Task *t, APTR func_start, APTR func_end )
 
 		if ( ((APTR) lr >=  (APTR) func_start) && ((APTR) lr <= (APTR) func_end) )
 		{
-			return (uint32 *) sp[0];
+			return (uint32 *) sp;
 		}
 
 		sp = (uint32 *)sp[0];
@@ -99,22 +99,25 @@ uint32 get_stack_size( uint32 *src )
 	return tot_size;
 }
 
-static void copy_stack_frames( uint32 *src, uint32 *current , struct Process *child )
+static uint32 *copy_stack_frames( uint32 *src, uint32 *current , struct Process *child )
 {
-	uint32 *dst;
-	uint32 offset = get_stack_size( src ) + 1024;
+	uint32 *dst,*first;
+	uint32 current_size = get_stack_size( current );
+	uint32 offset = get_stack_size( src ) + current_size + 1024;
 
- 	dst = (uint32 *) ((char *) child -> pr_Task.tc_SPReg - offset  );
+ 	first = dst = (uint32 *) ((char *) child -> pr_Task.tc_SPReg - offset  );
 
 	while(src && src[0])
 	{
-    		uint32 frame_size = (uint32)src[0] - (uint32)src; // compute frame size
+    		uint32 frame_size = (uint32)src[0] - (uint32)src;	// compute frame size
 
 #if debug
-		DebugPrintF("copy frame_size: %d\n", frame_size );
+		DebugPrintF("copy %p,%p to %p,%p frame_size: %d\n", src,(ULONG) src + frame_size,  dst,(ULONG) dst + frame_size , frame_size );
 #endif
 
   	  	CopyMem(src, dst, frame_size);     // copy the frame
+		if ( (uint32 *) src[-1] == src) dst[-1] = (uint32) dst;
+
    	 	current[0] = (uint32) dst; 		// save previus frame to current stack frame...
 
 #if debug	    
@@ -127,12 +130,19 @@ static void copy_stack_frames( uint32 *src, uint32 *current , struct Process *ch
 	}
 
 	current[0] = 0;	// terminate stack..
+
+	return first;
 }
 
 static BOOL patch_child_return( struct Process *parent, struct Process *child)
 {
-	uint32 *parent_vfork = find_frame( (struct Task *) parent, (APTR) vfork, (APTR) vfork_end );
-	uint32 *child_vfork  = find_frame( (struct Task *) child, (APTR) childStart, (APTR) childStart_end) ;
+	uint32 *first;
+	uint32 *return_to_parent_vfork = find_return_frame( (struct Task *) parent, (APTR) vfork, (APTR) vfork_end );
+	uint32 *return_to_child_vfork  = find_return_frame( (struct Task *) child, (APTR) childStart, (APTR) childStart_end) ;
+
+	uint32 *parent_vfork = (uint32 *) return_to_parent_vfork[0];
+	uint32 *child_vfork = (uint32 *) return_to_child_vfork[0];
+
 	uint32 this_frame_size;
 
 	if (!parent_vfork || !child_vfork)
@@ -143,12 +153,15 @@ static BOOL patch_child_return( struct Process *parent, struct Process *child)
 
 	uint32 return_to_main = parent_vfork[1];
 
+	// get stack pointer for before vfork(), should be stack for main() in this test...
+
+	first = copy_stack_frames( (uint32 *)  parent_vfork , (uint32 *) child_vfork[0] , child);
+
+	child_vfork[-1] = (uint32) first;
+
 	/* Patch LR */
 	child_vfork[1] = return_to_main;
 
-	// get stack pointer for before vfork(), should be stack for main() in this test...
-
-	copy_stack_frames( (uint32 *)  parent_vfork[0] , (uint32 *) child_vfork[0] , child);
 
 	return TRUE;
 }
